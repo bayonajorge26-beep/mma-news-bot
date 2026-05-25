@@ -299,7 +299,7 @@ async def send_news(bot: Bot, title: str, summary: str, link: str,
 
 
 # ── PROCESO DE FEEDS ──────────────────────────────────────────────────────────
-async def process_feed(bot: Bot, feed_cfg: dict, seen: set) -> int:
+async def process_feed(bot: Bot, feed_cfg: dict, seen: set, limit: int = 999) -> int:
     url      = feed_cfg["url"]
     tag      = feed_cfg["tag"]
     category = feed_cfg["category"]
@@ -307,6 +307,8 @@ async def process_feed(bot: Bot, feed_cfg: dict, seen: set) -> int:
     try:
         parsed = feedparser.parse(url)
         for entry in parsed.entries:
+            if count >= limit:
+                break
             eid = item_id(entry)
             if eid in seen:
                 continue
@@ -334,11 +336,15 @@ async def process_feed(bot: Bot, feed_cfg: dict, seen: set) -> int:
     return count
 
 
+MAX_PER_RUN = 10
+
 async def check_all_feeds(bot: Bot, seen: set) -> int:
     total = 0
     all_feeds = FEEDS + GOOGLE_NEWS_FEEDS
     for feed_cfg in all_feeds:
-        total += await process_feed(bot, feed_cfg, seen)
+        if total >= MAX_PER_RUN:
+            break
+        total += await process_feed(bot, feed_cfg, seen, limit=MAX_PER_RUN - total)
     save_seen(seen)
     return total
 
