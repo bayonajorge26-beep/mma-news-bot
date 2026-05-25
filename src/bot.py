@@ -341,27 +341,9 @@ async def main():
     bot  = Bot(token=TELEGRAM_TOKEN)
     seen = load_seen()
 
-    logger.info("🤖 Bot MMA, Boxeo & Streamers España iniciado")
-    await bot.send_message(
-        chat_id=TELEGRAM_CHAT_ID,
-        text=(
-            "🤖 *Bot Deportes de Combate — España* activo\n\n"
-            "📡 Cubriendo:\n"
-            "🏆 UFC + PFL/Bellator\n"
-            "🥊 Boxeo mundial (WBC/WBA/IBF/WBO)\n"
-            "🎮 La Velada del Año · Jordi Wild\n"
-            "🌍 KSI · Logan Paul · Jake Paul\n"
-            "🇪🇸 Peleadores españoles e hispanos\n\n"
-            "Noticias traducidas al español en tiempo real ✅"
-        ),
-        parse_mode=ParseMode.MARKDOWN,
-    )
-
-    while True:
-        logger.info("🔍 Revisando todos los feeds…")
-        n = await check_all_feeds(bot, seen)
-        logger.info(f"   {n} noticias nuevas enviadas")
-        await asyncio.sleep(CHECK_INTERVAL)
+    logger.info("🔍 Revisando todos los feeds…")
+    n = await check_all_feeds(bot, seen)
+    logger.info(f"   {n} noticias nuevas enviadas")
 
 
 if __name__ == "__main__":
