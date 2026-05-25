@@ -200,16 +200,23 @@ def is_relevant(title: str, summary: str, category: str) -> bool:
 
 
 # ── IMAGEN ────────────────────────────────────────────────────────────────────
+def clean_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    url = url.strip().replace("\n", "").replace("\r", "").replace("\t", "")
+    return url if url.startswith("http") else None
+
+
 def get_image(entry) -> str | None:
     if hasattr(entry, "media_content") and entry.media_content:
         for m in entry.media_content:
             url = m.get("url", "")
             if m.get("medium") == "image" or url.endswith((".jpg", ".png", ".webp")):
-                return url
+                return clean_url(url)
     if hasattr(entry, "enclosures") and entry.enclosures:
         for enc in entry.enclosures:
             if "image" in enc.get("type", "") or enc.get("href", "").endswith((".jpg", ".png")):
-                return enc.get("href") or enc.get("url")
+                return clean_url(enc.get("href") or enc.get("url"))
     link = entry.get("link")
     if link:
         try:
@@ -217,7 +224,7 @@ def get_image(entry) -> str | None:
             soup = BeautifulSoup(r.text, "html.parser")
             og = soup.find("meta", property="og:image")
             if og and og.get("content"):
-                return og["content"]
+                return clean_url(og["content"])
         except Exception:
             pass
     return None
@@ -307,7 +314,7 @@ async def process_feed(bot: Bot, feed_cfg: dict, seen: set) -> int:
 
             raw_title   = entry.get("title", "")
             raw_summary = clean_summary(entry)
-            link        = entry.get("link", "")
+            link        = clean_url(entry.get("link", "")) or ""
 
             if not is_relevant(raw_title, raw_summary, category):
                 logger.debug(f"⏭  [{category}] {raw_title[:55]}")
