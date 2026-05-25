@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
+from deep_translator import GoogleTranslator
 import asyncio
 
 logging.basicConfig(
@@ -17,10 +18,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-TELEGRAM_TOKEN    = os.environ["TELEGRAM_TOKEN"]
-TELEGRAM_CHAT_ID  = os.environ["TELEGRAM_CHAT_ID"]
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
-CHECK_INTERVAL    = int(os.getenv("CHECK_INTERVAL", "900"))
+TELEGRAM_TOKEN   = os.environ["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+CHECK_INTERVAL   = int(os.getenv("CHECK_INTERVAL", "900"))
 SEEN_FILE         = "seen_items.json"
 
 # ── RSS FEEDS PROFESIONALES ───────────────────────────────────────────────────
@@ -232,47 +232,19 @@ def clean_summary(entry) -> str:
     return text
 
 
-# ── TRADUCCIÓN CON CLAUDE ─────────────────────────────────────────────────────
+# ── TRADUCCIÓN CON GOOGLE TRANSLATE (gratis) ─────────────────────────────────
+_translator = GoogleTranslator(source="auto", target="es")
+
 async def translate_news(title: str, summary: str, category: str) -> tuple[str, str]:
-    # Detectar si ya está en español
     es_indicators = ["el ", "la ", "los ", "las ", "un ", "una ", "es ", "en ", "de ", "del "]
     combined = (title + " " + summary).lower()
     if sum(1 for i in es_indicators if i in combined) >= 4:
         return title, summary
 
-    tone_hint = (
-        "streamers y creators de contenido, con tono cercano y juvenil"
-        if category == "streamer"
-        else "deportes de combate, con tono periodístico directo"
-    )
-
-    prompt = f"""Eres un periodista deportivo español especializado en {tone_hint}.
-Traduce el titular y resumen al español natural. Mantén nombres propios tal cual.
-Responde SOLO con JSON sin backticks ni texto extra:
-{{"titulo": "...", "resumen": "..."}}
-
-TITULAR: {title}
-RESUMEN: {summary}"""
-
     try:
-        resp = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 400,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=15,
-        )
-        raw    = resp.json()["content"][0]["text"].strip()
-        raw    = raw.replace("```json", "").replace("```", "").strip()
-        parsed = json.loads(raw)
-        return parsed.get("titulo", title), parsed.get("resumen", summary)
+        t_title   = _translator.translate(title)   if title   else title
+        t_summary = _translator.translate(summary) if summary else summary
+        return t_title or title, t_summary or summary
     except Exception as e:
         logger.warning(f"Traducción fallida: {e}")
         return title, summary
